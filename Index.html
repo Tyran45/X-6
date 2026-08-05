@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Voting System — Voter</title>
+<style>
+  :root {
+    --bg: #0a1628; --surface: #112240; --card: #1a2f50; --input: #1e3a5f;
+    --border: #2a4a70; --accent: #00d4aa; --accent2: #4f8ef7; --gold: #fbbf24;
+    --red: #f43f5e; --text: #e2eaf6; --muted: #6b8cae; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+  .screen { display: none; flex-direction: column; min-height: 100vh; }
+  .screen.active { display: flex; }
+  .topbar { background: var(--surface); padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .topbar-title { font-size: 1rem; font-weight: 700; color: var(--accent); }
+  .content { flex: 1; padding: 20px; max-width: 520px; margin: 0 auto; width: 100%; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; border: 1px solid var(--border); }
+  .card-title { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .field input, .field select, .field textarea { width: 100%; background: var(--input); border: 1.5px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .field .field-hint { font-size: 0.71rem; color: var(--muted); margin-top: 5px; }
+  .btn { width: 100%; padding: 13px; border: none; border-radius: 10px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; margin-top: 8px; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: #0a1628; }
+  .btn-secondary { background: var(--input); color: var(--text); border: 1px solid var(--border); }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-sm { width: auto; padding: 7px 14px; font-size: 0.82rem; margin-top: 0; border-radius: 8px; }
+  .login-hero { text-align: center; padding: 40px 20px 20px; }
+  .login-hero .emoji { font-size: 3.5rem; }
+  .login-hero .org { font-size: 0.85rem; color: var(--muted); margin: 6px 0 4px; }
+  .login-hero h1 { font-size: 1.6rem; font-weight: 800; color: var(--text); }
+  .login-hero .tagline { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  .login-tabs { display: flex; background: var(--surface); border-radius: 10px; padding: 4px; margin-bottom: 16px; gap: 4px; }
+  .login-tab { flex: 1; padding: 10px; text-align: center; font-size: 0.83rem; font-weight: 700; color: var(--muted); cursor: pointer; border-radius: 8px; transition: all 0.2s; border: none; background: none; }
+  .login-tab.active { background: var(--accent); color: #0a1628; }
+  .voter-id-box { background: var(--bg); border: 2px solid var(--accent); border-radius: 12px; padding: 20px; text-align: center; margin: 16px 0; }
+  .voter-id-box .label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .voter-id-box .id-value { font-size: 2rem; font-weight: 800; color: var(--accent); letter-spacing: 0.12em; }
+  .voter-id-box .warning { font-size: 0.78rem; color: var(--gold); margin-top: 10px; line-height: 1.5; }
+  .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; position: sticky; top: 57px; z-index: 9; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { padding: 12px 16px; font-size: 0.8rem; font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--card); border-radius: var(--radius); padding: 14px 10px; text-align: center; border: 1px solid var(--border); }
+  .stat-val { font-size: 1.6rem; font-weight: 800; }
+  .stat-label { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
+  .result-row { margin-bottom: 14px; }
+  .result-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .result-name { font-size: 0.9rem; font-weight: 700; }
+  .result-votes { font-size: 0.8rem; color: var(--muted); }
+  .bar-track { background: var(--input); border-radius: 99px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  /* Category voting */
+  .category-section { margin-bottom: 24px; }
+  .category-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding: 10px 14px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+  .category-title { font-size: 1rem; font-weight: 800; color: var(--accent); }
+  .category-status { font-size: 0.75rem; padding: 3px 10px; border-radius: 99px; font-weight: 700; }
+  .cat-voted { background: #0d2a1f; color: var(--accent); }
+  .cat-pending { background: #2d2000; color: var(--gold); }
+  .cand-card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; border: 2px solid var(--border); cursor: pointer; transition: border-color 0.2s; }
+  .cand-card.selected { border-color: var(--accent); background: #1a3550; }
+  .cand-card.voted-card { border-color: var(--accent); opacity: 0.75; cursor: default; }
+  .cand-header { display: flex; align-items: center; gap: 12px; }
+  .cand-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--accent2); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: white; flex-shrink: 0; }
+  .cand-name { font-size: 1rem; font-weight: 700; }
+  .cand-pos { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 2px; }
+  .cand-bio { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .radio-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); margin-left: auto; flex-shrink: 0; transition: all 0.2s; }
+  .cand-card.selected .radio-dot { background: var(--accent); border-color: var(--accent); }
+  .list-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .list-item:last-child { border-bottom: none; }
+  .list-item-info .name { font-size: 0.9rem; font-weight: 700; }
+  .list-item-info .sub { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+  .voter-id-badge { display: inline-block; background: var(--bg); border: 1px solid var(--accent); color: var(--accent); border-radius: 6px; padding: 2px 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; margin-top: 3px; }
+  .national-id-badge { display: inline-block; background: var(--bg); border: 1px solid var(--gold); color: var(--gold); border-radius: 6px; padding: 2px 8px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; margin-top: 3px; margin-left: 4px; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #0a1628; padding: 12px 24px; border-radius: 99px; font-weight: 700; font-size: 0.9rem; z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+  .log-entry { padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time { font-size: 0.7rem; color: var(--muted); }
+  .log-event { font-size: 0.85rem; margin-top: 2px; }
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 0.9rem; }
+  .empty .icon { font-size: 2.5rem; margin-bottom: 8px; }
+  .deadline-badge { background: #2d2000; border: 1px solid var(--gold); color: var(--gold); border-radius: 8px; padding: 8px 14px; font-size: 0.8rem; font-weight: 600; text-align: center; margin-bottom: 16px; }
+  .info-banner { background: #0d2a1f; border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; margin-bottom: 14px; line-height: 1.5; }
+  .warn-banner { background: #2d2000; border: 1px solid var(--gold); color: var(--gold); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; margin-bottom: 14px; line-height: 1.5; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 380px; border: 1px solid var(--border); }
+  .modal h3 { font-size: 1.1rem; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions .btn { margin-top: 0; }
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; gap: 16px; }
+  .loading-overlay.hidden { display: none; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--muted); font-size: 0.9rem; }
+  .id-result { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-top: 10px; }
+  .id-result .r-name { font-size: 0.9rem; font-weight: 700; }
+  .id-result .r-id { font-size: 1.2rem; font-weight: 800; color: var(--accent); letter-spacing: 0.1em; margin-top: 4px; }
+  .id-result .r-national { font-size: 0.85rem; font-weight: 700; color: var(--gold); margin-top: 4px; }
+  .id-result .r-status { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .results-category { margin-bottom: 20px; }
+  .results-cat-title { font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent2); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .vote-progress { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--surface); border-radius: 8px; margin-bottom: 16px; }
+  .vote-progress-text { font-size: 0.82rem; color: var(--muted); flex: 1; }
+  .vote-progress-count { font-size: 0.85rem; font-weight: 800; color: var(--accent); }
+  .copy-id-btn { background: var(--surface); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 7px 16px; font-size: 0.82rem; font-weight: 700; cursor: pointer; margin-top: 10px; transition: background 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .copy-id-btn:active { background: var(--input); }
+  .topbar-vid-copy { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Connecting to database…</div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen">
+  <div class="login-hero">
+    <div class="emoji">🗳️</div>
+    <div class="org" id="org-name-hero">Voting System</div>
+    <h1>Cast Your Vote</h1>
+    <div class="tagline">Every voice counts.</div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="card-title">Voter Login</div>
+      <div class="info-banner">🪪 Enter your Organization ID and National ID number to access the ballot.</div>
+      <div class="field">
+        <label>Organization ID</label>
+        <input id="login-org" type="text" placeholder="Provided by your organization" autocomplete="off" oninput="this.value = this.value.toUpperCase()"/>
+      </div>
+      <div class="field">
+        <label>National ID No.</label>
+        <input id="login-nid" type="text" placeholder="Your National ID number" autocomplete="off"/>
+      </div>
+      <button class="btn btn-primary" onclick="voterLogin()">🗳️ Enter Ballot</button>
+      <p style="font-size:0.75rem;color:var(--muted);margin-top:12px;text-align:center">Issues accessing the ballot? Contact your admin.</p>
+    </div>
+  </div>
+</div>
+
+<!-- VOTER SCREEN -->
+<div id="screen-voter" class="screen">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="voter-name-bar">👤 Voter</div>
+      <div style="font-size:0.7rem;color:var(--muted)" id="topbar-vid-row">
+        <span id="voter-id-bar"></span>
+        <button class="topbar-vid-copy" id="topbar-copy-btn" onclick="copyNationalId('voter-id-bar-value', this)" title="Copy National ID">📋</button>
+        <span id="voter-id-bar-value" style="display:none"></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-sm btn-secondary" id="sync-btn" onclick="manualSync()" title="Refresh latest data">🔄 Sync</button>
+      <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="content" id="voter-content"></div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-body" style="font-size:0.9rem;color:var(--muted);"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-confirm-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, getDocs,
+         addDoc, query, orderBy, limit, serverTimestamp, writeBatch, increment, runTransaction }
+  from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHtjZ5z7NSSqhWEby5xvYoiOgLVIdBn_Y",
+  authDomain: "voting-app-e0dff.firebaseapp.com",
+  projectId: "voting-app-e0dff",
+  storageBucket: "voting-app-e0dff.firebasestorage.app",
+  messagingSenderId: "342593583090",
+  appId: "1:342593583090:web:8c35f61de341312ca91d6b",
+  measurementId: "G-BG0EMZN6KJ"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const settingsRef   = doc(db, 'config', 'settings');
+const candidatesCol = collection(db, 'candidates');
+const votersCol     = collection(db, 'voters');
+const logCol        = collection(db, 'log');
+
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
+  return h.toString(36);
+}
+
+// Reject obviously fake National IDs: all-same-digit (2222222) or sequential (12345678 / 87654321)
+function isSuspiciousId(idRaw) {
+  const cleaned = idRaw.replace(/\s/g, '');
+  const digits = (cleaned.match(/\d/g) || []).join('');
+  if (digits.length < 5 || digits.length !== cleaned.length) return false; // only judge purely-numeric IDs
+  if (/^(\d)\1+$/.test(digits)) return true; // e.g. 2222222, 3333333
+  let asc = true, desc = true;
+  for (let i = 1; i < digits.length; i++) {
+    const prev = +digits[i - 1], curr = +digits[i];
+    if (curr !== (prev + 1) % 10) asc = false;
+    if (curr !== (prev + 9) % 10) desc = false;
+  }
+  return asc || desc; // e.g. 12345678, 87654321
+}
+
+async function logEvent(event) {
+  try { await addDoc(logCol, { event, time: new Date().toLocaleString(), ts: serverTimestamp() }); }
+  catch (e) { console.error('logEvent:', e); }
+}
+
+async function getSettings() {
+  const defaults = { deadline: '', adminPw: 'admin123', orgName: '', orgId: '', phase: 'voting' };
+  const snap = await getDoc(settingsRef);
+  return snap.exists() ? { ...defaults, ...snap.data() } : defaults;
+}
+
+async function getCandidates() {
+  const snap = await getDocs(candidatesCol);
+  return snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+}
+
+async function getVoters() {
+  const snap = await getDocs(votersCol);
+  return snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+}
+
+async function getLog() {
+  const q = query(logCol, orderBy('ts', 'desc'), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.map(d => d.data());
+}
+
+async function initSettings() {
+  const snap = await getDoc(settingsRef);
+  if (!snap.exists()) await setDoc(settingsRef, { deadline: '', adminPw: 'admin123', orgName: '', orgId: '', phase: 'voting' });
+}
+
+// Group candidates by category/position
+function groupByCategory(candidates) {
+  const groups = {};
+  candidates.forEach(c => {
+    const cat = (c.position || 'General').trim();
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(c);
+  });
+  return groups;
+}
+
+// ── Live countdown ──────────────────────────────────────────────────────────
+function formatCountdown(ms) {
+  if (ms <= 0) return '⏰ Voting has closed';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = n => String(n).padStart(2, '0');
+  const parts = d > 0 ? `${d}d ${pad(h)}h ${pad(m)}m`
+              : h > 0 ? `${h}h ${pad(m)}m ${pad(s)}s`
+              : `${m}m ${pad(s)}s`;
+  return `🗓 Voting closes in ${parts}`;
+}
+
+function tickCountdown() {
+  const el = document.getElementById('deadline-countdown');
+  if (!el || !el.dataset.deadline) return;
+  const deadlineMs = new Date(el.dataset.deadline).getTime();
+  if (isNaN(deadlineMs)) { el.textContent = ''; return; }
+  const msLeft = deadlineMs - Date.now();
+  el.textContent = formatCountdown(msLeft);
+  if (msLeft <= 0 && countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+}
+
+// Re-armed on every render: clears any previous tick first so navigating
+// between the ballot list / an open category / results never stacks up
+// multiple timers.
+function startCountdownWatcher() {
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  tickCountdown();
+  const el = document.getElementById('deadline-countdown');
+  if (el && el.dataset.deadline) countdownInterval = setInterval(tickCountdown, 1000);
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let currentUser = null;
+// selectedVotes: { [category]: candidateFirestoreId }
+let selectedVotes = {};
+// openCategory: which position's ballot is currently open (null = show the position list)
+let openCategory = null;
+let countdownInterval = null;
+
+// ── Voter Login ───────────────────────────────────────────────────────────────
+window.voterLogin = async function() {
+  const orgInput = document.getElementById('login-org').value.trim();
+  const nid      = document.getElementById('login-nid').value.trim();
+
+  if (!orgInput || !nid) { toast('Enter your Organization ID and National ID.'); return; }
+  if (isSuspiciousId(nid)) { toast('That National ID looks invalid. Please double-check and re-enter.'); return; }
+
+  setLoading(true);
+  try {
+    const settings = await getSettings();
+    const orgId = (settings.orgId || '').trim();
+    if (!orgId) { toast('This election is not set up yet. Contact your admin.'); return; }
+    if (orgInput.toLowerCase() !== orgId.toLowerCase()) {
+      toast('Organization ID is incorrect.'); return;
+    }
+
+    const voters = await getVoters();
+    const voter = voters.find(v => v.nationalId && v.nationalId.toLowerCase() === nid.toLowerCase());
+    if (!voter) { toast('National ID not found. Check your ID or contact admin.'); return; }
+
+    currentUser = voter;
+    selectedVotes = {};
+    await logEvent(`Voter "${voter.name}" (${voter.nationalId}) logged in`);
+    showVoterScreen();
+  } catch (e) {
+    toast('Error connecting to database. Try again.'); console.error(e);
+  } finally {
+    setLoading(false);
+  }
+};
+
+window.logout = function() {
+  currentUser = null; selectedVotes = {}; openCategory = null;
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  ['login-org','login-nid'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  show('screen-login');
+};
+
+// ── Manual Sync ───────────────────────────────────────────────────────────────
+// Shared by the voting and results views (both render into #voter-content
+// via renderVoterContent), so one button covers both.
+window.manualSync = async function() {
+  const btn = document.getElementById('sync-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '🔄 Syncing…'; }
+  await renderVoterContent();
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync'; }
+};
+
+// ── Screens ──────────────────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showVoterScreen() {
+  show('screen-voter');
+  document.getElementById('voter-name-bar').textContent = '👤 ' + currentUser.name;
+  document.getElementById('voter-id-bar').textContent   = '🪪 ' + currentUser.nationalId;
+  document.getElementById('voter-id-bar-value').textContent = currentUser.nationalId;
+  renderVoterContent();
+}
+
+async function renderVoterContent() {
+  const el = document.getElementById('voter-content');
+  el.innerHTML = `<div class="empty"><div class="spinner" style="margin:40px auto"></div></div>`;
+  try {
+    const voters = await getVoters();
+    currentUser  = voters.find(v => v.firestoreId === currentUser.firestoreId) || currentUser;
+
+    const settings = await getSettings();
+    let deadlineHtml = '';
+    if (settings.deadline) {
+      deadlineHtml = `<div class="deadline-badge" id="deadline-countdown" data-deadline="${settings.deadline}"></div>`;
+    }
+
+    const candidates = await getCandidates();
+    const categoryGroups = groupByCategory(candidates);
+    const categories = Object.keys(categoryGroups);
+
+    const votedCategories = currentUser.votedCategories || {};
+    const totalCategories = categories.length;
+    const votedCount = Object.keys(votedCategories).length;
+    const allVoted = totalCategories > 0 && votedCount >= totalCategories;
+    // Admin can force everyone to the results screen (e.g. to close voting)
+    // independent of whether any individual voter has finished their ballot.
+    const adminClosed = settings.phase === 'results';
+
+    if (allVoted || adminClosed) {
+      const reason = adminClosed && !allVoted ? 'closed' : 'completed';
+      renderResultsScreen(categoryGroups, categories, votedCategories, deadlineHtml, totalCategories, reason);
+      return;
+    }
+
+    if (categories.length === 0) {
+      el.innerHTML = deadlineHtml + `<div class="empty"><div class="icon">🗳️</div>No candidates posted yet. Check back soon!</div>`;
+      startCountdownWatcher();
+      return;
+    }
+
+    // A position is currently open — show just its candidates instead of the list
+    if (openCategory && categories.includes(openCategory)) {
+      renderCategoryBallot(openCategory, categoryGroups, votedCategories, deadlineHtml);
+      return;
+    }
+
+    const progressHtml = `
+      <div class="vote-progress">
+        <div class="vote-progress-text">Voting progress</div>
+        <div class="vote-progress-count">${votedCount} / ${totalCategories} categories voted</div>
+      </div>`;
+
+    const listHtml = categories.map(cat => {
+      const cands = categoryGroups[cat];
+      const alreadyVoted = !!votedCategories[cat];
+      const statusBadge = alreadyVoted
+        ? `<span class="category-status cat-voted">✅ Voted</span>`
+        : `<span class="category-status cat-pending">⏳ Pending</span>`;
+      return `
+        <div class="list-item" style="cursor:pointer" onclick="openCategoryBallot('${cat.replace(/'/g,"\\'")}')">
+          <div class="list-item-info">
+            <div class="name">🗳️ ${cat}</div>
+            <div class="sub">${cands.length} candidate${cands.length!==1?'s':''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${statusBadge}
+            <span style="color:var(--muted);font-size:1.1rem">›</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = deadlineHtml + progressHtml + `
+      <div style="margin-bottom:16px">
+        <div style="font-size:1.1rem;font-weight:800;margin-bottom:4px">Cast Your Vote</div>
+        <div style="font-size:0.83rem;color:var(--muted)">Tap a position below to see its candidates. You cannot vote twice in the same category.</div>
+      </div>
+      <div class="card" style="padding:4px 20px">${listHtml}</div>`;
+    startCountdownWatcher();
+
+  } catch (e) {
+    el.innerHTML = `<div class="empty"><div class="icon">⚠️</div>Failed to load. Please try again.</div>`;
+    console.error(e);
+  }
+}
+
+// reason: 'completed' (this voter finished their own ballot) or
+// 'closed' (the admin forced results mode, regardless of this voter's progress)
+function renderResultsScreen(categoryGroups, categories, votedCategories, deadlineHtml, totalCategories, reason) {
+  const el = document.getElementById('voter-content');
+  const barColors = ['#00d4aa','#4f8ef7','#fbbf24','#f43f5e','#a78bfa'];
+  const medals = ['🥇','🥈','🥉'];
+
+  let categorySummaryHtml = '';
+  categories.forEach(cat => {
+    const cands = categoryGroups[cat];
+    const totalVotes = cands.reduce((a,c) => a + (c.votes || 0), 0);
+    const sorted = [...cands].sort((a,b) => (b.votes||0) - (a.votes||0));
+    const myVoteId = votedCategories[cat];
+    const barsHtml = sorted.map((c, i) => {
+      const pct = totalVotes > 0 ? Math.round((c.votes||0) / totalVotes * 100) : 0;
+      const isMyVote = c.firestoreId === myVoteId;
+      return `<div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:0.9rem;font-weight:700">${medals[i]||''} ${c.name}
+            ${isMyVote ? '<span style="font-size:0.7rem;background:var(--accent);color:#0a1628;border-radius:99px;padding:2px 8px;margin-left:6px;font-weight:700">Your vote ✓</span>' : ''}
+          </span>
+          <span style="font-size:0.85rem;font-weight:800;color:${barColors[i%barColors.length]}">${pct}%</span>
+        </div>
+        <div style="background:var(--input);border-radius:99px;height:10px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;border-radius:99px;background:${barColors[i%barColors.length]};transition:width 0.6s ease"></div>
+        </div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">${c.votes||0} vote${(c.votes||0)!==1?'s':''}</div>
+      </div>`;
+    }).join('');
+    categorySummaryHtml += `
+      <div class="card" style="margin-bottom:14px">
+        <div class="results-cat-title">${cat}</div>
+        ${barsHtml}
+      </div>`;
+  });
+
+  const headerHtml = reason === 'closed'
+    ? `<div style="text-align:center;padding:24px 0 16px">
+         <div style="font-size:3rem">🔒</div>
+         <h2 style="font-size:1.3rem;font-weight:800;color:var(--gold);margin:10px 0 4px">Voting Closed</h2>
+         <p style="color:var(--muted);font-size:0.85rem">The administrator has closed voting. Here are the results.</p>
+       </div>`
+    : `<div style="text-align:center;padding:24px 0 16px">
+         <div style="font-size:3rem">✅</div>
+         <h2 style="font-size:1.3rem;font-weight:800;color:var(--accent);margin:10px 0 4px">All Votes Cast!</h2>
+         <p style="color:var(--muted);font-size:0.85rem">You have voted in all ${totalCategories} categor${totalCategories!==1?'ies':'y'}.</p>
+       </div>`;
+
+  el.innerHTML = deadlineHtml + headerHtml + `
+    <div style="font-size:0.85rem;font-weight:700;color:var(--muted);margin-bottom:12px">📊 Live Results</div>
+    ${categorySummaryHtml}
+    <button class="btn btn-secondary" onclick="renderVoterContent()">🔄 Refresh Results</button>`;
+  startCountdownWatcher();
+}
+
+function renderCategoryBallot(cat, categoryGroups, votedCategories, deadlineHtml) {
+  const el = document.getElementById('voter-content');
+  const cands = categoryGroups[cat];
+  const alreadyVotedId = votedCategories[cat];
+  const alreadyVoted = !!alreadyVotedId;
+  const statusBadge = alreadyVoted
+    ? `<span class="category-status cat-voted">✅ Voted</span>`
+    : `<span class="category-status cat-pending">⏳ Pending</span>`;
+
+  const avatarHtml = c => c.photoUrl
+    ? `<div class="cand-avatar" style="background:none;padding:0;overflow:hidden"><img src="${c.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/></div>`
+    : `<div class="cand-avatar">${c.name.charAt(0)}</div>`;
+
+  let candsHtml = '';
+  if (alreadyVoted) {
+    candsHtml = cands.map(c => {
+      const isVoted = c.firestoreId === alreadyVotedId;
+      return `<div class="cand-card ${isVoted ? 'voted-card' : ''}" style="opacity:${isVoted?'1':'0.45'};cursor:default">
+        <div class="cand-header">
+          ${avatarHtml(c)}
+          <div><div class="cand-name">${c.name}</div><div class="cand-pos">${c.position}</div></div>
+          ${isVoted ? '<div style="margin-left:auto;background:var(--accent);color:#0a1628;border-radius:99px;padding:3px 10px;font-size:0.72rem;font-weight:800">Your vote ✓</div>' : ''}
+        </div>
+        ${c.bio ? `<div class="cand-bio">${c.bio}</div>` : ''}
+      </div>`;
+    }).join('');
+    candsHtml += `<div class="info-banner" style="margin-top:8px">🔒 You have already voted in this category. Your vote cannot be changed.</div>`;
+  } else {
+    candsHtml = cands.map(c => `
+      <div class="cand-card" id="cand-${c.firestoreId}" onclick="selectCandidate('${cat.replace(/'/g,"\\'")}','${c.firestoreId}')">
+        <div class="cand-header">
+          ${avatarHtml(c)}
+          <div><div class="cand-name">${c.name}</div><div class="cand-pos">${c.position}</div></div>
+          <div class="radio-dot"></div>
+        </div>
+        ${c.bio ? `<div class="cand-bio">${c.bio}</div>` : ''}
+      </div>`).join('');
+    candsHtml += `<button class="btn btn-primary" style="margin-top:4px" onclick="confirmVote('${cat.replace(/'/g,"\\'")}')">✅ Confirm Vote for ${cat}</button>`;
+  }
+
+  el.innerHTML = deadlineHtml + `
+    <button class="btn btn-secondary" style="width:auto;padding:8px 16px;margin-bottom:14px" onclick="backToCategories()">‹ Back to positions</button>
+    <div class="category-section">
+      <div class="category-header">
+        <div class="category-title">🗳️ ${cat}</div>
+        ${statusBadge}
+      </div>
+      ${candsHtml}
+    </div>`;
+  startCountdownWatcher();
+}
+
+window.openCategoryBallot = function(cat) {
+  openCategory = cat;
+  renderVoterContent();
+};
+
+window.backToCategories = function() {
+  openCategory = null;
+  selectedVotes = {};
+  renderVoterContent();
+};
+
+window.selectCandidate = function(category, candidateId) {
+  selectedVotes[category] = candidateId;
+  // Visually update only the cards in this category
+  document.querySelectorAll('.cand-card').forEach(card => {
+    if (card.id === 'cand-' + candidateId) {
+      card.classList.add('selected');
+    } else {
+      // Only deselect cards in same category
+      const onclick = card.getAttribute('onclick') || '';
+      if (onclick.includes(`'${category.replace(/'/g,"\\'")}'`)) {
+        card.classList.remove('selected');
+      }
+    }
+  });
+};
+
+window.confirmVote = async function(category) {
+  const candidateId = selectedVotes[category];
+  if (!candidateId) { toast(`Select a candidate for ${category} first.`); return; }
+
+  // Quick client-side check not already voted in this category
+  const votedCats = currentUser.votedCategories || {};
+  if (votedCats[category]) { toast(`You have already voted for ${category}.`); return; }
+
+  const settingsCheck = await getSettings();
+  if (settingsCheck.phase === 'results') {
+    toast('Voting has been closed by the administrator.');
+    openCategory = null;
+    renderVoterContent();
+    return;
+  }
+
+  const candidates = await getCandidates();
+  const cand = candidates.find(c => c.firestoreId === candidateId);
+  if (!cand) { toast('Candidate not found.'); return; }
+
+  openModal(`Vote for ${cand.name}?`,
+    `Confirm your vote for ${cand.name} as ${category}. This cannot be changed.`,
+    async () => {
+      setLoading(true);
+      try {
+        const voterRef     = doc(db, 'voters', currentUser.firestoreId);
+        const candidateRef = doc(db, 'candidates', candidateId);
+        let updatedVotedCategories = {};
+        let allVotedNow = false;
+
+        // Atomic transaction: read + write happen as one unit, so if this
+        // same voter submits from a second device at the same moment,
+        // Firestore guarantees only one of the two attempts can win —
+        // the loser sees the fresh "already voted" state and is blocked.
+        // Also re-reads the admin's settings doc inside the same
+        // transaction, so a vote can't sneak through the instant after
+        // the admin flips the system to "results" mode.
+        await runTransaction(db, async (tx) => {
+          const settingsSnap = await tx.get(settingsRef);
+          if (settingsSnap.exists() && settingsSnap.data().phase === 'results') {
+            throw new Error('VOTING_CLOSED');
+          }
+
+          const voterSnap = await tx.get(voterRef);
+          if (!voterSnap.exists()) throw new Error('VOTER_NOT_FOUND');
+          const freshVotedCategories = voterSnap.data().votedCategories || {};
+          if (freshVotedCategories[category]) throw new Error('ALREADY_VOTED');
+
+          updatedVotedCategories = { ...freshVotedCategories, [category]: candidateId };
+          const allCats = [...new Set(candidates.map(c => c.position))];
+          allVotedNow = allCats.every(c => updatedVotedCategories[c]);
+
+          tx.update(candidateRef, { votes: increment(1) });
+          tx.update(voterRef, {
+            votedCategories: updatedVotedCategories,
+            voted: allVotedNow,
+            votedFor: candidateId  // legacy: store last voted for
+          });
+        });
+
+        await logEvent(`Voter "${currentUser.name}" (${currentUser.nationalId}) voted for "${cand.name}" in category "${category}"`);
+        currentUser.votedCategories = updatedVotedCategories;
+        currentUser.voted = allVotedNow;
+        delete selectedVotes[category];
+        openCategory = null;
+        toast(`Vote cast for ${category}! ✅`);
+        // renderVoterContent() re-checks allVoted (and the admin phase) against
+        // the fresh data above, so completing the last category — or the admin
+        // closing voting — jumps straight to the results screen.
+        renderVoterContent();
+      } catch (e) {
+        if (e.message === 'ALREADY_VOTED') {
+          toast('You already voted in this category (possibly from another device).');
+          openCategory = null;
+          renderVoterContent();
+        } else if (e.message === 'VOTING_CLOSED') {
+          toast('Voting was just closed by the administrator.');
+          openCategory = null;
+          renderVoterContent();
+        } else {
+          toast('Error casting vote. Please try again.'); console.error(e);
+        }
+      } finally { setLoading(false); }
+    }
+  );
+};
+
+// ── Copy Voter ID ─────────────────────────────────────────────────────────────
+window.copyNationalId = function(sourceId, btn) {
+  const text = document.getElementById(sourceId).textContent.trim();
+  if (!text || text === '—') return;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  }).catch(() => {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+};
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+let _modalCb = null;
+window.openModal = function(title, body, cb, type) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent  = body;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.className   = 'btn ' + (type === 'danger' ? 'btn-danger' : 'btn-primary');
+  btn.textContent = type === 'danger' ? 'Yes, proceed' : 'Confirm';
+  _modalCb = cb;
+  document.getElementById('confirm-modal').classList.add('open');
+};
+window.closeModal = function() {
+  document.getElementById('confirm-modal').classList.remove('open'); _modalCb = null;
+};
+document.getElementById('modal-confirm-btn').onclick = () => { if (_modalCb) _modalCb(); closeModal(); };
+document.getElementById('confirm-modal').onclick = (e) => { if (e.target === e.currentTarget) closeModal(); };
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastTimer;
+window.toast = function(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+};
+
+function setLoading(on) {
+  document.getElementById('loading-overlay').classList.toggle('hidden', !on);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await initSettings();
+    const settings = await getSettings();
+    if (settings.orgName) document.getElementById('org-name-hero').textContent = settings.orgName;
+  } catch (e) {
+    console.error('Init error:', e);
+    toast('Could not connect to database. Check your network.');
+  } finally {
+    setLoading(false);
+    show('screen-login');
+  }
+})();
+</script>
+</body>
+</html>
